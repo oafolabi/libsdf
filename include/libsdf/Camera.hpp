@@ -13,6 +13,8 @@
 #include <deque>
 #include <cstdint>
 
+#define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
+
 
 class Camera {
 private:
@@ -34,6 +36,7 @@ private:
     void init( );
 
 public:
+    // EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     /**
      * @return the default Kinect IR camera parmaeters
@@ -100,6 +103,12 @@ public:
      * @param The new pose of the camera as a 4x4 matrix
      */
     void set_pose( const Eigen::Matrix4f & pose );
+
+
+    /**
+     * @param The new pose of the camera as a 4x4 matrix
+     */
+    void set_pose( const Eigen::Matrix4f & pose , const Eigen::Matrix4f & pose_inv);
 
     /**
      * Move the camera and set it's orientation based on

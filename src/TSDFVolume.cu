@@ -1067,3 +1067,16 @@ void TSDFVolume::raycast( uint16_t width, uint16_t height, const Camera& camera,
 
     raycaster.raycast( *this, camera, vertices, normals );
 }
+
+
+void TSDFVolume::distance_data(float* buffer){
+    
+    cudaError_t err = cudaMemcpy(buffer, m_distances, m_size.x * m_size.y * m_size.z * sizeof(float), cudaMemcpyDeviceToHost);
+    check_cuda_error( "Failed to copy points to host when getting distance data", err);
+}
+
+void TSDFVolume::weight_data(float* buffer){
+    
+    cudaError_t err = cudaMemcpy(buffer, m_weights, m_size.x * m_size.y * m_size.z * sizeof(float), cudaMemcpyDeviceToHost);
+    check_cuda_error( "Failed to copy points to host when getting distance data", err);
+}

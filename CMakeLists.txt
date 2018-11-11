@@ -22,6 +22,7 @@ set( CMAKE_CUDA_FLAGS "-g -G -O0")
 
 # Require Eigen
 find_package(Eigen3 REQUIRED)
+message(STATUS, "Found Eigen:${EIGEN3_INCLUDE_DIR} ")
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Find source files and CUDA files 

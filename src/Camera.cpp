@@ -14,13 +14,17 @@
 
 const float EPS = 1e-6;
 
+#define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
+
 /**
  * Common construction code
  */
 void Camera::init( ) {
+    m_pose = Eigen::Matrix4f::Identity(); //pose;
+    m_pose_inverse = Eigen::Matrix4f::Identity(); //m_pose.inverse();
     m_k_inverse = m_k.inverse();
-
-    set_pose( Eigen::Matrix4f::Identity() );
+    Eigen::Matrix4f temp = Eigen::Matrix4f::Identity();
+//    set_pose( temp);
 }
 
 /**
@@ -61,7 +65,7 @@ Camera::Camera( const Eigen::Matrix3f & k ) {
  * @param fov_x The horizontal field of view in mm
  * @param fov_y The vertical field of view in mm
  */
-Camera::Camera( const int image_width, const int image_height, const float fov_x, const float fov_y ) {
+Camera::Camera( const int image_width, const int image_height, const float fov_x, const float fov_y ){
     float focal_x = -image_width / ( 2 * std::tan(fov_x / 2.0f ) );
     float focal_y = -image_height / ( 2 * std::tan(fov_y / 2.0f ) );
     m_k << -focal_x, 0.0f, (image_width / 2.0f), 0.0f, -focal_y, (image_height / 2.0f), 0.0f, 0.0f, 1.0f;
@@ -105,9 +109,20 @@ const Eigen::Matrix4f & Camera::inverse_pose( ) const {
 /**
  * @param The new pose of the camera as a 4x4 matrix
  */
-void Camera::set_pose( const Eigen::Matrix4f & pose ) {
-    m_pose = pose;
-    m_pose_inverse = m_pose.inverse();
+void Camera::set_pose(const Eigen::Matrix4f & pose ) {
+    // std::cout << pose << std::endl << std::flush;
+    memcpy(m_pose.data(),pose.data(), 16*sizeof(float));
+    memcpy(m_pose_inverse.data(),Eigen::Matrix4f(m_pose.inverse()).data(),16*sizeof(float));
+    //m_pose_inverse = Eigen::Matrix4f(m_pose.inverse());
+}
+
+
+void Camera::set_pose( const Eigen::Matrix4f & pose , const Eigen::Matrix4f & pose_inv){
+
+    memcpy(m_pose.data(),pose.data(), 16*sizeof(float));
+    memcpy(m_pose_inverse.data(),pose_inv.data(),16*sizeof(float));
+
+
 }
 
 /**

@@ -187,6 +187,12 @@ public:
         return m_distances;
     }
 
+	 /**
+   * Return pointer to distance data
+   * @return Pointer to distance data
+   */
+    void distance_data(float* buffer);
+
     /**
      * Set the distance data for the TSDF in one call
      * @param distance_data Pointer to enough floats to populate the TSFD
@@ -201,6 +207,12 @@ public:
     inline const float * weight_data() const {
         return m_weights;
     }
+
+		/**
+     * Return pointer to weight data
+     * @return Pointer to weight data
+     */
+    void weight_data(float* buffer);
 
     /**
      * Set the weight data for the TSDF in one call
