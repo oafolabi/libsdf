@@ -20,10 +20,11 @@ const float EPS = 1e-6;
  * Common construction code
  */
 void Camera::init( ) {
-    m_pose = Eigen::Matrix4f::Identity(); //pose;
-    m_pose_inverse = Eigen::Matrix4f::Identity(); //m_pose.inverse();
+    // m_pose = Eigen::Matrix4f::Identity(); //pose;
+    // m_pose_inverse = Eigen::Matrix4f::Identity(); //m_pose.inverse();
     m_k_inverse = m_k.inverse();
-    Eigen::Matrix4f temp = Eigen::Matrix4f::Identity();
+    std::cout <<"K_inv: " << m_k_inverse<< std::endl;
+    // Eigen::Matrix4f temp = Eigen::Matrix4f::Identity();
 //    set_pose( temp);
 }
 
@@ -34,7 +35,8 @@ void Camera::init( ) {
  * @param centre_x The horizontal centre of the image in pixels
  * @param centre_y The vertical centre of the image in pixels
  */
-Camera::Camera( const float focal_x, const float focal_y, const float centre_x, const float centre_y ) {
+Camera::Camera( const float focal_x, const float focal_y, const float centre_x, const float centre_y ):m_k{Eigen::Matrix3f::Zero()}, m_k_inverse{Eigen::Matrix3f::Zero()},
+m_pose{Eigen::Matrix4f::Identity()}, m_pose_inverse{Eigen::Matrix4f::Identity()} {
     m_k = Eigen::Matrix3f::Zero();
     m_k(0,0) = focal_x;
     m_k(0,2) = centre_x;
@@ -119,8 +121,12 @@ void Camera::set_pose(const Eigen::Matrix4f & pose ) {
 
 void Camera::set_pose( const Eigen::Matrix4f & pose , const Eigen::Matrix4f & pose_inv){
 
+    // std::cout << pose << std::endl << std::flush;
     memcpy(m_pose.data(),pose.data(), 16*sizeof(float));
+    // std::cout << m_pose << std::endl << std::flush;
     memcpy(m_pose_inverse.data(),pose_inv.data(),16*sizeof(float));
+    // std::cout << pose_inv << std::endl << std::flush;
+    // std::cout << m_pose_inverse << std::endl << std::flush;
 
 
 }

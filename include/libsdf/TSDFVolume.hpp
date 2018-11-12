@@ -80,7 +80,7 @@ public:
     /**
     * Make a TSDFVolume with the given dimensions (voxels) and physcial dimensions
     * @param size The number of voxels in each X,Y and Z dimension
-    * @param physical_size The size ( in mm ) of the space contained in the volume
+    * @param physical_size The size ( in m ) of the space contained in the volume
     */
     TSDFVolume( const UInt3& size = UInt3{64, 64, 64},
                 const Float3& physical_size = Float3 { 3000.0f, 3000.0f, 3000.0f} );
@@ -91,11 +91,12 @@ public:
      * @param volume_x X dimension in voxels
      * @param volume_y Y dimension in voxels
      * @param volume_z Z dimension in voxels
-     * @param psize_x Physical size in X dimension in mm
-     * @param psize_y Physical size in Y dimension in mm
-     * @param psize_z Physical size in Z dimension in mm
+     * @param psize_x Physical size in X dimension in m
+     * @param psize_y Physical size in Y dimension in m
+     * @param psize_z Physical size in Z dimension in m
+     * @param truncation distance, truncation distance in m
      */
-    TSDFVolume( uint16_t volume_x, uint16_t volume_y, uint16_t volume_z, float psize_x, float psize_y, float psize_z );
+    TSDFVolume( uint16_t volume_x, uint16_t volume_y, uint16_t volume_z, float psize_x, float psize_y, float psize_z, float truncation_distance = 0.2);
 
     /**
      * Load a TSDFVolume from the specified file. The volume must previously have been saved
@@ -108,9 +109,9 @@ public:
      * @param volume_x X dimension in voxels
      * @param volume_y Y dimension in voxels
      * @param volume_z Z dimension in voxels
-     * @param psize_x Physical size in X dimension in mm
-     * @param psize_y Physical size in Y dimension in mm
-     * @param psize_z Physical size in Z dimension in mm
+     * @param psize_x Physical size in X dimension in m
+     * @param psize_y Physical size in Y dimension in m
+     * @param psize_z Physical size in Z dimension in 
      */
     void set_size( uint16_t volume_x, uint16_t volume_y, uint16_t volume_z, float psize_x, float psize_y, float psize_z);
 
@@ -120,26 +121,26 @@ public:
     inline UInt3 size( ) const { return (UInt3) m_size; }
 
     /**
-     * @return the dimensions of each voxel in mm
+     * @return the dimensions of each voxel in m
      */
     inline Float3 voxel_size( ) const { return (Float3) m_voxel_size; }
 
     /**
-     * @return the physical size of the volume in world coords (mm)
+     * @return the physical size of the volume in world coords (m)
      */
     inline Float3 physical_size( ) const { return (Float3) m_physical_size; }
 
     /**
-     * @return the truncation distance (mm)
+     * @return the truncation distance (m)
      */
     inline float truncation_distance( ) const { return m_truncation_distance; }
 
     /**
      * Offset the TSDF volume in space by the given offset. By default, the bottom, left, front corner of
      * voxel (0,0,0) is at world coordinate (0,0,0). This moves that point to the new world coordinate by a
-     * @param ox X offset in mm
-     * @param oy Y offset in mm
-     * @param oz Z offset in mm
+     * @param ox X offset in m
+     * @param oy Y offset in m
+     * @param oz Z offset in m
      */
     inline void offset( float ox, float oy, float oz ) {
         m_offset.x = ox;
@@ -246,12 +247,12 @@ public:
 #pragma mark - Integrate new depth data
     /**
      * Integrate a range map into the TSDF
-     * @param depth_map Pointer to width*height depth values where 0 is an invalid depth and positive values are expressed in mm
+     * @param depth_map Pointer to width*height depth values where 0 is an invalid depth and positive values are expressed in m
      * @param width The horiontal dimension of the depth_map
      * @param height The height of the depth_map
      * @param camera The camera from which the depth_map was taken
      */
-    void integrate( const uint16_t * depth_map, uint32_t width, uint32_t height, const Camera & camera );
+    void integrate( const float * depth_map, uint32_t width, uint32_t height, const Camera & camera );
 
 #pragma mark - Import/Export
 

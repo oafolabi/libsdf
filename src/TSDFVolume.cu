@@ -320,11 +320,19 @@ void integrate_kernel(  float         * distance_data,
                         Mat33           kinv,
                         uint32_t        width, 
                         uint32_t        height, 
-                        const uint16_t  * depth_map) {
+                        const float  * depth_map) {
 
     // Extract the voxel Y and Z coordinates we then iterate over X
     int vy = threadIdx.y + blockIdx.y * blockDim.y;
     int vz = threadIdx.z + blockIdx.z * blockDim.z;
+
+    // int vz = blockIdx.x;
+    // int vy = threadIdx.x;
+
+    float3 mm_voxel_size = f3_div_elem( voxel_space_size, voxel_grid_size );
+	// printf("%u, %u \n", vy, vz);
+
+    
 
     // If this thread is in range
     if ( vy < voxel_grid_size.y && vz < voxel_grid_size.z ) {
@@ -336,11 +344,15 @@ void integrate_kernel(  float         * distance_data,
         // For each voxel in this column
         for ( int vx = 0; vx < voxel_grid_size.x; vx++ ) {
 
+            
+
             // Work out where in the image, the centre of this voxel projects
             // This gives us a pixel in the depth map
 
             // Convert voxel to world coords of deformed centre
             float3 centre_of_voxel        = f3_add( offset, deformation_nodes[ voxel_index ].translation);
+            // float3 centre_of_voxel        = f3_add( offset, float3{vx*mm_voxel_size.x, vy*mm_voxel_size.y, vz*mm_voxel_size.z});
+            // printf("%u, %u, %u, %f, %f, %f \n", vx, vy, vz, centre_of_voxel.x, centre_of_voxel.y, centre_of_voxel.z);
 
             // Convert world to pixel coords
             int3   centre_of_voxel_in_pix = world_to_pixel( centre_of_voxel, inv_pose, k );
@@ -350,26 +362,37 @@ void integrate_kernel(  float         * distance_data,
 
                 // Extract the depth to the surface at this point
                 uint32_t voxel_pixel_index = centre_of_voxel_in_pix.y * width + centre_of_voxel_in_pix.x;
-                uint16_t surface_depth = depth_map[ voxel_pixel_index ];
+                float surface_depth = depth_map[ voxel_pixel_index ];
 
                 // If the depth is valid
                 if ( surface_depth > 0 ) {
 
+        
+
+                    //printf("surface depth %f \n", surface_depth);
                     // Project depth entry to a vertex ( in camera space)
                     float3 surface_vertex = pixel_to_camera( centre_of_voxel_in_pix, kinv, surface_depth );
 
                     // Compute the SDF is the distance between the camera origin and surface_vertex in world coordinates
 					float3 voxel_cam = world_to_camera( centre_of_voxel, inv_pose );
                     float sdf = surface_vertex.z - voxel_cam.z;
+                     
 
 					if( sdf >= -trunc_distance ) {
                     	// Truncate the sdf to the range -trunc_distance -> trunc_distance
+
+                        
+                        // printf("sdf %f \n", sdf);
+                        
                 	    float tsdf;
             	        if ( sdf > 0 ) {
         	                tsdf = min( sdf, trunc_distance);
+                            
     	                } else {
 							tsdf = sdf;
 						}
+
+                        // printf("tsdf %f \n", tsdf);
 
         	            // Extract prior weight
     	                float prior_weight = weight_data[voxel_index];
@@ -442,13 +465,16 @@ TSDFVolume::TSDFVolume( const UInt3& size, const Float3& physical_size ) : m_off
  * @param volume_x X dimension in voxels
  * @param volume_y Y dimension in voxels
  * @param volume_z Z dimension in voxels
- * @param psize_x Physical size in X dimension in mm
- * @param psize_y Physical size in Y dimension in mm
- * @param psize_z Physical size in Z dimension in mm
+ * @param psize_x Physical size in X dimension in m
+ * @param psize_y Physical size in Y dimension in m
+ * @param psize_z Physical size in Z dimension in m
+ * @param truncation_distance, truncation distance in m
  */
-TSDFVolume::TSDFVolume( uint16_t volume_x, uint16_t volume_y, uint16_t volume_z, float psize_x, float psize_y, float psize_z )  : m_offset { 0.0, 0.0, 0.0 }, m_distances {NULL}, m_weights {NULL}, m_deformation_nodes{NULL}, m_colours{NULL} {
+TSDFVolume::TSDFVolume( uint16_t volume_x, uint16_t volume_y, uint16_t volume_z, float psize_x, float psize_y, float psize_z , float truncation_distance)  : m_offset { 0.0, 0.0, 0.0 }, m_distances {NULL}, m_weights {NULL}, m_deformation_nodes{NULL}, m_colours{NULL}, m_truncation_distance(truncation_distance) {
     if ( ( volume_x > 0 ) && ( volume_y > 0 ) && ( volume_z > 0 ) &&
             ( psize_x > 0 ) && ( psize_y > 0 ) && ( psize_z > 0 ) ) {
+
+        // printf("size x: %d, size y: %d, size z: %d \n", volume_x, volume_y, volume_z);
 
         set_size( volume_x, volume_y, volume_z , psize_x, psize_y, psize_z );
     } else {
@@ -696,11 +722,15 @@ void TSDFVolume::set_size( uint16_t volume_x, uint16_t volume_y, uint16_t volume
         m_size          = dim3 { volume_x, volume_y, volume_z };
         m_physical_size = float3 { psize_x, psize_y, psize_z };
 
+        //printf("size x: %u, size y: %u, size z: %u \n", m_size.x, m_size.y, m_size.z);
+
         // Compute truncation distance - must be at least 2x max voxel size
         m_voxel_size = f3_div_elem( m_physical_size, m_size );
 
         // Set t > diagonal of voxel
-        m_truncation_distance = 1.1f * f3_norm( m_voxel_size );
+        if(m_truncation_distance == 0.0){
+            m_truncation_distance = 1.1f * f3_norm( m_voxel_size );
+        }
 
         // Allocate device storage
         cudaError_t err;
@@ -862,13 +892,13 @@ void TSDFVolume::clear( ) {
  * Integrate a range map into the TSDF
  * This follows the approach in Cohen, N.S.V. 2013, 'Open Fusion', pp. 1–35.
  * whereby new maps have less weight than existing maps
- * @param depth_map Pointer to width*height depth values where 0 is an invalid depth and positive values are expressed in mm
+ * @param depth_map Pointer to width*height depth values where 0 is an invalid depth and positive values are expressed in m
  * @param width The horiontal dimension of the depth_map
  * @param height The height of the depth_map
  * @param camera The camera from which the depth_map was taken
  */
 __host__
-void TSDFVolume::integrate( const uint16_t * depth_map, uint32_t width, uint32_t height, const Camera & camera ) {
+void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t height, const Camera & camera ) {
     assert( depth_map );
 
     std::cout << "Integrating depth map size " << width << "x" << height << std::endl;
@@ -887,8 +917,8 @@ void TSDFVolume::integrate( const uint16_t * depth_map, uint32_t width, uint32_t
     memcpy( &kinv, camera.kinv().data(), 9 * sizeof( float ) );
 
     // Copy depth map data to device
-    uint16_t * d_depth_map;
-    size_t data_size = width * height * sizeof( uint16_t);
+    float * d_depth_map;
+    size_t data_size = width * height * sizeof(float);
     cudaError_t err = cudaMalloc( &d_depth_map, data_size );
     check_cuda_error( "Couldn't allocate storage for depth map", err);
 
@@ -899,7 +929,10 @@ void TSDFVolume::integrate( const uint16_t * depth_map, uint32_t width, uint32_t
     dim3 block( 1, 20, 20  );
     dim3 grid ( 1, divUp( m_size.y, block.y ), divUp( m_size.z, block.z ) );
 
-    integrate_kernel <<< grid, block>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map);
+
+    
+    integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map);
+    //integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map);
     cudaDeviceSynchronize( );
     err = cudaGetLastError();
     check_cuda_error( "Integrate kernel failed", err);
@@ -1070,9 +1103,20 @@ void TSDFVolume::raycast( uint16_t width, uint16_t height, const Camera& camera,
 
 
 void TSDFVolume::distance_data(float* buffer){
+
+    //printf("size is : %u \n", m_size.x*m_size.y*m_size.z);
+    // printf("size x: %u, size y: %u, size z: %u \n", m_size.x, m_size.y, m_size.z);
     
-    cudaError_t err = cudaMemcpy(buffer, m_distances, m_size.x * m_size.y * m_size.z * sizeof(float), cudaMemcpyDeviceToHost);
+    //for(int i = 0 ; i < m_size.x*m_size.y*m_size.z; i++){
+        
+
+    //        printf("%f \n", m_distances[i]);
+        
+    //}
+    // m_size.x * m_size.y * m_size.z * sizeof(float)
+    cudaError_t err = cudaMemcpy(buffer, m_distances,m_size.x * m_size.y * m_size.z * sizeof(float), cudaMemcpyDeviceToHost);
     check_cuda_error( "Failed to copy points to host when getting distance data", err);
+
 }
 
 void TSDFVolume::weight_data(float* buffer){
