@@ -252,7 +252,7 @@ public:
      * @param height The height of the depth_map
      * @param camera The camera from which the depth_map was taken
      */
-    void integrate( const float * depth_map, uint32_t width, uint32_t height, const Camera & camera );
+    void integrate( const float * depth_map, uint32_t width, uint32_t height, const Camera & camera , uint16_t* test_data= NULL);
 
 #pragma mark - Import/Export
 

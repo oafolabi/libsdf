@@ -320,7 +320,8 @@ void integrate_kernel(  float         * distance_data,
                         Mat33           kinv,
                         uint32_t        width, 
                         uint32_t        height, 
-                        const float  * depth_map) {
+                        const float  * depth_map,
+						uint16_t	  *test_data) {
 
     // Extract the voxel Y and Z coordinates we then iterate over X
     int vy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -335,11 +336,16 @@ void integrate_kernel(  float         * distance_data,
     
 
     // If this thread is in range
-    if ( vy < voxel_grid_size.y && vz < voxel_grid_size.z ) {
+    if ( vy < voxel_grid_size.y && vz <  voxel_grid_size.z ) {
 
 
         // The next (x_size) elements from here are the x coords
         int voxel_index =  ((voxel_grid_size.x * voxel_grid_size.y) * vz ) + (voxel_grid_size.x * vy);
+		if(test_data){
+
+			int v_idx = vz + vy*250;
+			//test_data[v_idx] = 10;
+		}
 
         // For each voxel in this column
         for ( int vx = 0; vx < voxel_grid_size.x; vx++ ) {
@@ -350,8 +356,8 @@ void integrate_kernel(  float         * distance_data,
             // This gives us a pixel in the depth map
 
             // Convert voxel to world coords of deformed centre
-            float3 centre_of_voxel        = f3_add( offset, deformation_nodes[ voxel_index ].translation);
-            // float3 centre_of_voxel        = f3_add( offset, float3{vx*mm_voxel_size.x, vy*mm_voxel_size.y, vz*mm_voxel_size.z});
+            // float3 centre_of_voxel        = f3_add( offset, deformation_nodes[ voxel_index ].translation);
+            float3 centre_of_voxel        = f3_add( offset, float3{vx*mm_voxel_size.x, vy*mm_voxel_size.y, vz*mm_voxel_size.z});
             // printf("%u, %u, %u, %f, %f, %f \n", vx, vy, vz, centre_of_voxel.x, centre_of_voxel.y, centre_of_voxel.z);
 
             // Convert world to pixel coords
@@ -898,7 +904,7 @@ void TSDFVolume::clear( ) {
  * @param camera The camera from which the depth_map was taken
  */
 __host__
-void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t height, const Camera & camera ) {
+void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t height, const Camera & camera , uint16_t * test_data) {
     assert( depth_map );
 
     std::cout << "Integrating depth map size " << width << "x" << height << std::endl;
@@ -929,17 +935,44 @@ void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t he
     dim3 block( 1, 20, 20  );
     dim3 grid ( 1, divUp( m_size.y, block.y ), divUp( m_size.z, block.z ) );
 
+	uint16_t * m_test_data = NULL;
+	if(test_data){
+		cudaError_t err = cudaMalloc( &m_test_data, 250*250*sizeof(uint16_t) );
+		check_cuda_error( "Couldn't allocate storage for test_data", err);
+
+    	err = cudaMemcpy( m_test_data, test_data,250*250*sizeof(uint16_t), cudaMemcpyHostToDevice );
+    	check_cuda_error( "Failed to copy test_data to GPU", err);
+
+	}else{
+
+		 test_data = NULL;
+
+	}
+
 
     
-    integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map);
+    integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
     //integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map);
     cudaDeviceSynchronize( );
     err = cudaGetLastError();
     check_cuda_error( "Integrate kernel failed", err);
 
+	if(test_data){
+		err = cudaMemcpy( test_data, m_test_data,250*250*sizeof(uint16_t), cudaMemcpyDeviceToHost );
+	   	check_cuda_error( "Failed to copy test_data to CPU", err);
+	}
+	
+
     // Now delete depth map data from device
     err = cudaFree( d_depth_map );
     check_cuda_error( "Failed to deallocate cuda depth map", err);
+
+	if(m_test_data){
+
+		err = cudaFree( m_test_data );
+		check_cuda_error( "Failed to deallocate cuda test data", err);
+
+	}
 
     std::cout << "Integration finished" << std::endl;
 }

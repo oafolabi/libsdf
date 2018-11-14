@@ -19,16 +19,16 @@
 class Camera {
 private:
     // The intrinsic matrix
-    Eigen::Matrix3f     m_k;
+    EIGEN_ALIGN_TO_BOUNDARY(16) Eigen::Matrix3f     m_k;
 
     // The inverse of K, precalculated
-    Eigen::Matrix3f     m_k_inverse;
+    EIGEN_ALIGN_TO_BOUNDARY(16) Eigen::Matrix3f     m_k_inverse;
 
     // The pose of the camera in global coordinate space
-    Eigen::Matrix4f     m_pose;
+    EIGEN_ALIGN_TO_BOUNDARY(16) Eigen::Matrix4f     m_pose;
 
     // The inverse pose of the camera
-    Eigen::Matrix4f     m_pose_inverse;
+    EIGEN_ALIGN_TO_BOUNDARY(16) Eigen::Matrix4f     m_pose_inverse;
 
     /**
      * Common construction code
@@ -36,7 +36,7 @@ private:
     void init( );
 
 public:
-    // EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     /**
      * @return the default Kinect IR camera parmaeters

@@ -23,7 +23,7 @@ void Camera::init( ) {
     // m_pose = Eigen::Matrix4f::Identity(); //pose;
     // m_pose_inverse = Eigen::Matrix4f::Identity(); //m_pose.inverse();
     m_k_inverse = m_k.inverse();
-    std::cout <<"K_inv: " << m_k_inverse<< std::endl;
+    //std::cout <<"K_inv: " << m_k_inverse<< std::endl;
     // Eigen::Matrix4f temp = Eigen::Matrix4f::Identity();
 //    set_pose( temp);
 }
@@ -35,9 +35,9 @@ void Camera::init( ) {
  * @param centre_x The horizontal centre of the image in pixels
  * @param centre_y The vertical centre of the image in pixels
  */
-Camera::Camera( const float focal_x, const float focal_y, const float centre_x, const float centre_y ):m_k{Eigen::Matrix3f::Zero()}, m_k_inverse{Eigen::Matrix3f::Zero()},
+Camera::Camera( const float focal_x, const float focal_y, const float centre_x, const float centre_y ):m_k{Eigen::Matrix3f::Identity()}, m_k_inverse{Eigen::Matrix3f::Identity()},
 m_pose{Eigen::Matrix4f::Identity()}, m_pose_inverse{Eigen::Matrix4f::Identity()} {
-    m_k = Eigen::Matrix3f::Zero();
+    // m_k = Eigen::Matrix3f::Zero();
     m_k(0,0) = focal_x;
     m_k(0,2) = centre_x;
     m_k(1,1) = focal_y;
