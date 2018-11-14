@@ -339,8 +339,7 @@ void integrate_kernel(  float         * distance_data,
     if ( vy < voxel_grid_size.y && vz <  voxel_grid_size.z ) {
 
 
-        // The next (x_size) elements from here are the x coords
-        int voxel_index =  ((voxel_grid_size.x * voxel_grid_size.y) * vz ) + (voxel_grid_size.x * vy);
+        
 		if(test_data){
 
 			int v_idx = vz + vy*250;
@@ -350,7 +349,8 @@ void integrate_kernel(  float         * distance_data,
         // For each voxel in this column
         for ( int vx = 0; vx < voxel_grid_size.x; vx++ ) {
 
-            
+            // The next (x_size) elements from here are the x coords
+       		int voxel_index =  ((voxel_grid_size.x * voxel_grid_size.y) * vz ) + (voxel_grid_size.x * vy) + vx;
 
             // Work out where in the image, the centre of this voxel projects
             // This gives us a pixel in the depth map
@@ -415,7 +415,7 @@ void integrate_kernel(  float         * distance_data,
                 } // End of depth > 0
             } // End of point in frustrum
 
-            voxel_index++;
+            // voxel_index++;
         } // End each voxel in this column
     }
 }
