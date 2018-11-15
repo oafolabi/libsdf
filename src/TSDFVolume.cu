@@ -324,11 +324,11 @@ void integrate_kernel(  float         * distance_data,
 						uint16_t	  *test_data) {
 
     // Extract the voxel Y and Z coordinates we then iterate over X
-    int vy = threadIdx.y + blockIdx.y * blockDim.y;
-    int vz = threadIdx.z + blockIdx.z * blockDim.z;
+    // int vy = threadIdx.y + blockIdx.y * blockDim.y;
+    // int vz = threadIdx.z + blockIdx.z * blockDim.z;
 
-    // int vz = blockIdx.x;
-    // int vy = threadIdx.x;
+    int vz = blockIdx.x;
+    int vy = threadIdx.x;
 
     float3 mm_voxel_size = f3_div_elem( voxel_space_size, voxel_grid_size );
 	// printf("%u, %u \n", vy, vz);
@@ -748,11 +748,11 @@ void TSDFVolume::set_size( uint16_t volume_x, uint16_t volume_y, uint16_t volume
         err = cudaMalloc( &m_weights, data_size );
         check_cuda_error( "Couldn't allocate space for weight data for TSDF", err );
 
-        err = cudaMalloc( &m_colours,  volume_x * volume_y * volume_z * sizeof( uchar3 ) );
-        check_cuda_error( "Couldn't allocate space for colour data for TSDF", err );
+        //err = cudaMalloc( &m_colours,  volume_x * volume_y * volume_z * sizeof( uchar3 ) );
+        //check_cuda_error( "Couldn't allocate space for colour data for TSDF", err );
 
-        err = cudaMalloc( &m_deformation_nodes, volume_x * volume_y * volume_z * sizeof( DeformationNode ) );
-        check_cuda_error( "Couldn't allocate space for deformation nodes for TSDF", err );
+        //err = cudaMalloc( &m_deformation_nodes, volume_x * volume_y * volume_z * sizeof( DeformationNode ) );
+        //check_cuda_error( "Couldn't allocate space for deformation nodes for TSDF", err );
 
         m_global_rotation    = make_float3( 0.0f, 0.0f, 0.0f );
         m_global_translation = make_float3( 0.0f, 0.0f, 0.0f );
@@ -865,26 +865,28 @@ void TSDFVolume::clear( ) {
     cudaError_t err;
 
     // Clear weights to 0
-    set_memory_to_value<<< grid, block >>>( m_weights, data_size, 0.0f );
-    cudaDeviceSynchronize( );
-    err = cudaGetLastError();
+    // set_memory_to_value<<< grid, block >>>( m_weights, data_size, 0.0f );
+    // cudaDeviceSynchronize( );
+    // err = cudaGetLastError();
+	err = cudaMemset( m_weights, data_size , 0.0f  );
     check_cuda_error( "Couldn't clear weight data", err );
 
 
     // Set distance data to truncation distance
-    set_memory_to_value<<< grid, block >>>( m_distances, data_size, m_truncation_distance );
-    cudaDeviceSynchronize( );
-    err = cudaGetLastError();
+    // set_memory_to_value<<< grid, block >>>( m_distances, data_size, m_truncation_distance );
+    // cudaDeviceSynchronize( );
+    // err = cudaGetLastError();
+	err = cudaMemset( m_weights, data_size , m_truncation_distance );
     check_cuda_error( "Couldn't clear depth data", err );
 
     // Clear RGB data to black
-    err = cudaMemset( m_colours, data_size * 3, 0  );
-    check_cuda_error( "Couldn't clear colour data", err );
+    // err = cudaMemset( m_colours, data_size * 3, 0  );
+    // check_cuda_error( "Couldn't clear colour data", err );
 
     // Now initialise the deformations
-    dim3 block2( 1, 32, 32 );
-    dim3 grid2 ( 1, divUp( m_size.y, block2.y ), divUp( m_size.z, block2.z ) );
-    initialise_deformation <<<grid2, block2>>>( m_deformation_nodes, m_size, m_voxel_size, m_offset );
+    // dim3 block2( 1, 32, 32 );
+    // dim3 grid2 ( 1, divUp( m_size.y, block2.y ), divUp( m_size.z, block2.z ) );
+    // initialise_deformation <<<grid2, block2>>>( m_deformation_nodes, m_size, m_voxel_size, m_offset );
     cudaDeviceSynchronize( );
     err = cudaGetLastError();
     check_cuda_error( "Couldn't initialise deformation nodes", err );
@@ -935,6 +937,11 @@ void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t he
     dim3 block( 1, 20, 20  );
     dim3 grid ( 1, divUp( m_size.y, block.y ), divUp( m_size.z, block.z ) );
 
+
+	//dim3 grid (1, 500, 500);
+	//dim3 block ( 1, divUp( m_size.y, grid.y ), divUp( m_size.z, grid.z ) );
+	
+
 	uint16_t * m_test_data = NULL;
 	if(test_data){
 		cudaError_t err = cudaMalloc( &m_test_data, 250*250*sizeof(uint16_t) );
@@ -951,7 +958,9 @@ void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t he
 
 
     
-    integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
+    //integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
+
+	  integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
     //integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map);
     cudaDeviceSynchronize( );
     err = cudaGetLastError();

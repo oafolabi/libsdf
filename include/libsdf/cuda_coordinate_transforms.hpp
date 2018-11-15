@@ -8,7 +8,7 @@
  * @param world_coordinate The 3D point in world space
  * @return pixel_coordinate The 2D point in pixel space
  */
-__device__
+__device__ 
 int3 world_to_pixel( const float3 & world_coordinate, const Mat44 & inv_pose, const Mat33 & k );
 
 /**
