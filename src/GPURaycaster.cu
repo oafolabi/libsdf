@@ -298,13 +298,14 @@ void process_ray(   const float3        origin,
     float near_t, far_t;
     bool intersects = compute_near_and_far_t( origin, direction, space_min, space_max, near_t, far_t );
 
+	
+
     // Only do this if the ray intersects space
     float3 intersection_point { CUDART_NAN_F, CUDART_NAN_F, CUDART_NAN_F};
 
     if ( intersects ) {
         // Compute the start point in grid coords
         float3 start_point = f3_sub( f3_add( origin, f3_mul_scalar( near_t, direction ) ), space_min);
-
         bool done = false;
 
         // Initialise TSDF to trun distance
@@ -323,7 +324,14 @@ void process_ray(   const float3        origin,
         int count = 0;
         float step_size = trunc_distance * 0.05;
         while ( !done  ) {
+
             float3 current_point = f3_add( start_point, f3_mul_scalar( t, direction ) );
+			// if((imx == 10 ) && ( imy == 10)){
+
+			//	printf( " t: %f, previous tsdf:  %f, tsdf: %f, max_t: %f, current_point: %f, %f, %f \n", t, previous_tsdf, tsdf, max_t, current_point.x + space_min.x, current_point.y + space_min.y, current_point.z + space_min.z );
+				
+
+			// }
 
             // Save last TSDF (to check against crossing surface)
             previous_tsdf = tsdf;
@@ -372,6 +380,8 @@ void process_ray(   const float3        origin,
                 done = true;
             }
         }
+
+
     }
     vertices[idx] = intersection_point;
 }

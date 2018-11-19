@@ -17,6 +17,9 @@
 #include <cfloat>
 #include <cstdint>
 
+#include <thrust/device_vector.h>
+#include <thrust/fill.h>
+
 #include "math_constants.h"
 
 const float POINT_EPSILON=0.001f;
@@ -324,11 +327,11 @@ void integrate_kernel(  float         * distance_data,
 						uint16_t	  *test_data) {
 
     // Extract the voxel Y and Z coordinates we then iterate over X
-    // int vy = threadIdx.y + blockIdx.y * blockDim.y;
-    // int vz = threadIdx.z + blockIdx.z * blockDim.z;
+    int vy = threadIdx.y + blockIdx.y * blockDim.y;
+    int vz = threadIdx.z + blockIdx.z * blockDim.z;
 
-    int vz = blockIdx.x;
-    int vy = threadIdx.x;
+    // int vz = blockIdx.x;
+    // int vy = threadIdx.x;
 
     float3 mm_voxel_size = f3_div_elem( voxel_space_size, voxel_grid_size );
 	// printf("%u, %u \n", vy, vz);
@@ -363,8 +366,18 @@ void integrate_kernel(  float         * distance_data,
             // Convert world to pixel coords
             int3   centre_of_voxel_in_pix = world_to_pixel( centre_of_voxel, inv_pose, k );
 
+        
+
             // if this point is in the camera view frustum...
-            if ( ( centre_of_voxel_in_pix.x >= 0 ) && ( centre_of_voxel_in_pix.x < width ) && ( centre_of_voxel_in_pix.y >= 0 ) && ( centre_of_voxel_in_pix.y < height) ) {
+            if ( ( centre_of_voxel_in_pix.x >= 0 ) && ( centre_of_voxel_in_pix.x < width ) && ( centre_of_voxel_in_pix.y >= 0 ) && ( centre_of_voxel_in_pix.y < height)) {
+
+                // check that we don't have negative depth                
+                float3 three_d_cam_coordinates = world_to_camera( centre_of_voxel,  inv_pose );
+
+                if(three_d_cam_coordinates.z < 0){
+
+                    continue;
+                }
 
                 // Extract the depth to the surface at this point
                 uint32_t voxel_pixel_index = centre_of_voxel_in_pix.y * width + centre_of_voxel_in_pix.x;
@@ -411,6 +424,14 @@ void integrate_kernel(  float         * distance_data,
 
     	                weight_data[voxel_index] = new_weight;
 	                    distance_data[voxel_index] = new_distance;
+                        // if((vx == 277) && (vy == 51) && (vz == 75) ){
+                           //  printf( "new observations at voxel vx: %d, vy: %d, vz: %d are global coords:  x: %f, y: %f, z: %f \n", vx, vy, vz, centre_of_voxel.x,  centre_of_voxel.y,  centre_of_voxel.z);
+
+                           // printf( "new observations at voxel vx: %d, vy: %d, vz: %d are dist: %f, u: %d, v: %d, z: %f \n", vx, vy, vz, tsdf, centre_of_voxel_in_pix.x,  centre_of_voxel_in_pix.y, surface_depth);
+                           // printf( "new values at voxel vx: %d, vy: %d, vz: %d are dist: %f, weight %f \n", vx, vy, vz, distance_data[voxel_index], weight_data[voxel_index] );
+
+                        
+                        // }
 					} // End of sdf > -trunc
                 } // End of depth > 0
             } // End of point in frustrum
@@ -866,18 +887,28 @@ void TSDFVolume::clear( ) {
 
     // Clear weights to 0
     // set_memory_to_value<<< grid, block >>>( m_weights, data_size, 0.0f );
-    // cudaDeviceSynchronize( );
-    // err = cudaGetLastError();
-	err = cudaMemset( m_weights, data_size , 0.0f  );
+    // wrap raw pointer with a device_ptr 
+    thrust::device_ptr<float> weights_ptr(m_weights);
+    // use device_ptr in thrust algorithms
+    thrust::fill(weights_ptr, weights_ptr + data_size, (float) 0.0f);
+    cudaDeviceSynchronize( );
+    err = cudaGetLastError();
+	//err = cudaMemset( m_weights, data_size , 0.0f  );
     check_cuda_error( "Couldn't clear weight data", err );
+
 
 
     // Set distance data to truncation distance
     // set_memory_to_value<<< grid, block >>>( m_distances, data_size, m_truncation_distance );
-    // cudaDeviceSynchronize( );
-    // err = cudaGetLastError();
-	err = cudaMemset( m_weights, data_size , m_truncation_distance );
+    // wrap raw pointer with a device_ptr 
+    thrust::device_ptr<float> distance_ptr(m_distances);
+    // use device_ptr in thrust algorithms
+    thrust::fill(distance_ptr, distance_ptr + data_size, (float) m_truncation_distance);
+    cudaDeviceSynchronize( );
+    err = cudaGetLastError();
+	//err = cudaMemset( m_distances, data_size , m_truncation_distance );
     check_cuda_error( "Couldn't clear depth data", err );
+  
 
     // Clear RGB data to black
     // err = cudaMemset( m_colours, data_size * 3, 0  );
@@ -958,9 +989,9 @@ void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t he
 
 
     
-    //integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
+    integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
 
-	  integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
+	  // integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
     //integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map);
     cudaDeviceSynchronize( );
     err = cudaGetLastError();

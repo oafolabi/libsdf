@@ -94,10 +94,10 @@ PngWrapper * normals_as_png(uint16_t width, uint16_t height, const Eigen::Matrix
             n[1] = normals(1,idx);
             n[2] = normals(2,idx);
 
-            // if( n[2] < 0 ) n[2] = -n[2];
-            // n[0] = ((n[0] / 2.0f) + 0.5) * 255;
-            // n[1] = ((n[1] / 2.0f) + 0.5) * 255;
-            // n[2] = ((n[2] / 2.0f) + 0.5) * 255;
+            if( n[2] < 0 ) n[2] = -n[2];
+            n[0] = ((n[0] / 2.0f) + 0.5) * 255;
+            n[1] = ((n[1] / 2.0f) + 0.5) * 255;
+            n[2] = ((n[2] / 2.0f) + 0.5) * 255;
             image[write_idx++] = floor( n[0] );
             image[write_idx++] = floor( n[1] );
             image[write_idx++] = floor( n[2] );
