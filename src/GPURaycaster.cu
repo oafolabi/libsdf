@@ -30,12 +30,12 @@ float3 compute_ray_direction_at_pixel( const float3& origin, uint16_t pix_x, uin
         pix_x * kinv.m21 + pix_y * kinv.m22 + kinv.m23,
         pix_x * kinv.m31 + pix_y * kinv.m32 + kinv.m33
     };
-
     // Convert this vector to world coordinate frame
     // We'd normally add in the camera origin but since we
     // want the direction, we'd deduct the camera origin
     // at the very next step so we'll just do the rotation instead.
     float3 ray_in_world_space = m3_f3_mul( rot, ray_in_cam_space );
+		
 
     // Convert to unit vector
     f3_normalise( ray_in_world_space);
@@ -375,7 +375,7 @@ void process_ray(   const float3        origin,
 
             // Catch failures - this code shouldn';'t be invoked.
             if ( count++ > 4400 ) {
-                printf( "Timed out @(%d,%d) with t:%f tsdf:%f\n", imx, imy, t, tsdf  );
+                printf( "Timed out @(%d,%d) with t:%f tsdf:%f \n", imx, imy, t, tsdf );
 
                 done = true;
             }

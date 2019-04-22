@@ -362,6 +362,7 @@ void integrate_kernel(  float         * distance_data,
             // float3 centre_of_voxel        = f3_add( offset, deformation_nodes[ voxel_index ].translation);
             float3 centre_of_voxel        = f3_add( offset, float3{vx*mm_voxel_size.x, vy*mm_voxel_size.y, vz*mm_voxel_size.z});
             // printf("%u, %u, %u, %f, %f, %f \n", vx, vy, vz, centre_of_voxel.x, centre_of_voxel.y, centre_of_voxel.z);
+						// printf("offset: %f, %f, %f \n", offset.x, offset.y, offset.z);
 
             // Convert world to pixel coords
             int3   centre_of_voxel_in_pix = world_to_pixel( centre_of_voxel, inv_pose, k );
@@ -385,12 +386,16 @@ void integrate_kernel(  float         * distance_data,
 
                 // If the depth is valid
                 if ( surface_depth > 0 ) {
-
-        
-
-                    //printf("surface depth %f \n", surface_depth);
+										float3 checkpoint = make_float3(5.8698, 4.5115,0.5242);
+        						
+                    // printf("surface depth %f \n", surface_depth);
                     // Project depth entry to a vertex ( in camera space)
                     float3 surface_vertex = pixel_to_camera( centre_of_voxel_in_pix, kinv, surface_depth );
+										if (f3_norm(f3_sub(centre_of_voxel,checkpoint)) <= 0.010){
+												printf("%u, %u, %u, %f, %f, %f, %f, \n", vx, vy, vz, centre_of_voxel.x, centre_of_voxel.y, centre_of_voxel.z, offset.x);
+												printf("surface depth %f \n", surface_depth);
+												printf("camera point %f, %f, %f \n", surface_vertex.x, surface_vertex.y, surface_vertex.z);
+										}
 
                     // Compute the SDF is the distance between the camera origin and surface_vertex in world coordinates
 					float3 voxel_cam = world_to_camera( centre_of_voxel, inv_pose );
@@ -988,7 +993,7 @@ void TSDFVolume::integrate( const float * depth_map, uint32_t width, uint32_t he
 	}
 
 
-    
+		printf("offset: %f, %f, %f \n", m_offset.x, m_offset.y, m_offset.z);    
     integrate_kernel <<<block,grid>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);
 
 	  // integrate_kernel <<<250,250>>>( m_distances, m_weights, m_size, m_physical_size, m_deformation_nodes, m_offset, m_truncation_distance, m_max_weight, pose, inv_pose, k, kinv, width, height, d_depth_map,   m_test_data);

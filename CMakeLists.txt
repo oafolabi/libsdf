@@ -8,10 +8,14 @@ project( sdf
 # Add the binary tree to the search path for inlcude files
 include_directories( "include")
 include_directories( "${PROJECT_BINARY_DIR}" )
+message(STATUS, ${PROJECT_BINARY_DIR})
 
 # Write targets to bin directory
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/../bin)
-set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/../library)
+#set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/../bin)
+#set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/../library)
+
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/library)
 
 # configure a header file to pass some of the CMake settings
 # to the source code
